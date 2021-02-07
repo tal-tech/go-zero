@@ -12,7 +12,7 @@ var mockLock sync.Mutex
 
 func setMockClient(cli internal.EtcdClient) func() {
 	mockLock.Lock()
-	internal.NewClient = func([]string) (internal.EtcdClient, error) {
+	internal.NewClient = func([]string, string, string) (internal.EtcdClient, error) {
 		return cli, nil
 	}
 	return func() {

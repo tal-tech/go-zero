@@ -7,12 +7,24 @@ func NewRpcPubServer(etcdEndpoints []string, etcdKey, listenOn string, opts ...S
 		pubClient := discov.NewPublisher(etcdEndpoints, etcdKey, listenOn)
 		return pubClient.KeepAlive()
 	}
-	server := keepAliveServer{
+
+	return newKeepAliveServer(registerEtcd,listenOn,opts...), nil
+}
+
+func NewRpcPubServerWithEtcdAuth(etcdEndpoints []string, user, pass, etcdKey, listenOn string, opts ...ServerOption) (Server, error) {
+	registerEtcd := func() error {
+		pubClient := discov.NewPublisherWithAuth(etcdEndpoints, user, pass, etcdKey, listenOn)
+		return pubClient.KeepAliveWithAuth()
+	}
+
+	return newKeepAliveServer(registerEtcd,listenOn,opts...), nil
+}
+
+func newKeepAliveServer(registerEtcd func() error, listenOn string, opts ...ServerOption) keepAliveServer {
+	return keepAliveServer{
 		registerEtcd: registerEtcd,
 		Server:       NewRpcServer(listenOn, opts...),
 	}
-
-	return server, nil
 }
 
 type keepAliveServer struct {

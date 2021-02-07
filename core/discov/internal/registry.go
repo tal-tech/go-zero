@@ -46,16 +46,39 @@ func (r *Registry) getCluster(endpoints []string) *cluster {
 	return c
 }
 
+func (r *Registry) getClusterWithAuth(endpoints []string, user, pass string) *cluster {
+	clusterKey := getClusterKey(endpoints)
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	c, ok := r.clusters[clusterKey]
+	if !ok {
+		c = newClusterWithAuth(endpoints, user, pass)
+		r.clusters[clusterKey] = c
+	}
+
+	return c
+}
+
 func (r *Registry) GetConn(endpoints []string) (EtcdClient, error) {
 	return r.getCluster(endpoints).getClient()
+}
+
+func (r *Registry) GetConnWithAuth(endpoints []string, user, pass string) (EtcdClient, error) {
+	return r.getClusterWithAuth(endpoints, user, pass).getClient()
 }
 
 func (r *Registry) Monitor(endpoints []string, key string, l UpdateListener) error {
 	return r.getCluster(endpoints).monitor(key, l)
 }
 
+func (r *Registry) MonitorWithAuth(endpoints []string, user, pass, key string, l UpdateListener) error {
+	return r.getClusterWithAuth(endpoints, user, pass).monitor(key, l)
+}
+
 type cluster struct {
 	endpoints  []string
+	user       string
+	pass       string
 	key        string
 	values     map[string]map[string]string
 	listeners  map[string][]UpdateListener
@@ -67,6 +90,19 @@ type cluster struct {
 func newCluster(endpoints []string) *cluster {
 	return &cluster{
 		endpoints:  endpoints,
+		key:        getClusterKey(endpoints),
+		values:     make(map[string]map[string]string),
+		listeners:  make(map[string][]UpdateListener),
+		watchGroup: threading.NewRoutineGroup(),
+		done:       make(chan lang.PlaceholderType),
+	}
+}
+
+func newClusterWithAuth(endpoints []string, user, pass string) *cluster {
+	return &cluster{
+		endpoints:  endpoints,
+		user:       user,
+		pass:       pass,
 		key:        getClusterKey(endpoints),
 		values:     make(map[string]map[string]string),
 		listeners:  make(map[string][]UpdateListener),
@@ -224,7 +260,7 @@ func (c *cluster) monitor(key string, l UpdateListener) error {
 }
 
 func (c *cluster) newClient() (EtcdClient, error) {
-	cli, err := NewClient(c.endpoints)
+	cli, err := NewClient(c.endpoints, c.user, c.pass)
 	if err != nil {
 		return nil, err
 	}
@@ -288,7 +324,7 @@ func (c *cluster) watchConnState(cli EtcdClient) {
 	watcher.watch(cli.ActiveConnection())
 }
 
-func DialClient(endpoints []string) (EtcdClient, error) {
+func DialClient(endpoints []string, user, pass string) (EtcdClient, error) {
 	return clientv3.New(clientv3.Config{
 		Endpoints:            endpoints,
 		AutoSyncInterval:     autoSyncInterval,
@@ -296,6 +332,8 @@ func DialClient(endpoints []string) (EtcdClient, error) {
 		DialKeepAliveTime:    dialKeepAliveTime,
 		DialKeepAliveTimeout: DialTimeout,
 		RejectOldCluster:     true,
+		Username:             user,
+		Password:             pass,
 	})
 }
 
