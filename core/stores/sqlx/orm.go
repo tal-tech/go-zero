@@ -253,7 +253,10 @@ func unwrapFields(v reflect.Value) []reflect.Value {
 		if child.Kind() == reflect.Struct && childType.Anonymous {
 			fields = append(fields, unwrapFields(child)...)
 		} else {
-			fields = append(fields, child)
+			// fix for scan nest struct fields
+			if tagV := childType.Tag.Get(tagName); tagV != "" {
+				fields = append(fields, child)
+			}
 		}
 	}
 

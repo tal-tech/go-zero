@@ -207,8 +207,8 @@ func TestUnmarshalRowString(t *testing.T) {
 
 func TestUnmarshalRowStruct(t *testing.T) {
 	var value = new(struct {
-		Name string
-		Age  int
+		Name string `db:"name"`
+		Age  int    `db:"age"`
 	})
 
 	runOrmTest(t, func(db *sql.DB, mock sqlmock.Sqlmock) {

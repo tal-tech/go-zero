@@ -82,8 +82,13 @@ func FieldNames(in interface{}) []string {
 
 // RawFieldNames converts golang struct field into slice string
 func RawFieldNames(in interface{}) []string {
-	out := make([]string, 0)
 	v := reflect.ValueOf(in)
+
+	return nestFieldNames(v) // recursive processor
+}
+
+// recursive processor
+func nestFieldNames(v reflect.Value) (out []string) {
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
@@ -97,12 +102,18 @@ func RawFieldNames(in interface{}) []string {
 	for i := 0; i < v.NumField(); i++ {
 		// gets us a StructField
 		fi := typ.Field(i)
-		if tagv := fi.Tag.Get(dbTag); tagv != "" {
-			out = append(out, fmt.Sprintf("`%s`", tagv))
+		ft := fi.Type
+
+		// fix for support nest struct fields
+		if fi.Anonymous && ft.Kind() == reflect.Struct {
+			out = append(out, nestFieldNames(v.Field(i))...)
 		} else {
-			out = append(out, fmt.Sprintf(`"%s"`, fi.Name))
+			if tagV := fi.Tag.Get(dbTag); tagV != "" {
+				out = append(out, fmt.Sprintf("`%s`", tagV))
+			} else {
+				//out = append(out, fmt.Sprintf(`"%s"`, fi.Name))
+			}
 		}
 	}
-
 	return out
 }
