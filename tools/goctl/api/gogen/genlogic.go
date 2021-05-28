@@ -12,7 +12,7 @@ import (
 	"github.com/tal-tech/go-zero/tools/goctl/vars"
 )
 
-const logicTemplate = `package logic
+const logicTemplate = `package {{.pkgName}}
 
 import (
 	{{.imports}}
@@ -83,15 +83,17 @@ func genLogicByRoute(dir string, cfg *config.Config, group spec.Group, route spe
 		requestString = "req " + requestGoTypeName(route, typesPacket)
 	}
 
+	subDir := getLogicFolderPath(group, route)
 	return genFile(fileGenConfig{
 		dir:             dir,
-		subdir:          getLogicFolderPath(group, route),
+		subdir:          subDir,
 		filename:        goFile + ".go",
 		templateName:    "logicTemplate",
 		category:        category,
 		templateFile:    logicTemplateFile,
 		builtinTemplate: logicTemplate,
 		data: map[string]string{
+			"pkgName":      subDir[strings.LastIndex(subDir, "/")+1:],
 			"imports":      imports,
 			"logic":        strings.Title(logic),
 			"function":     strings.Title(strings.TrimSuffix(logic, "Logic")),
