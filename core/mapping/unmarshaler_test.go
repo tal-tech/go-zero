@@ -1748,8 +1748,8 @@ func TestUnmarshalWrappedNamedObjectOptional(t *testing.T) {
 	)
 	m := map[string]interface{}{
 		"Inner": map[string]interface{}{
-			"Host": "thehost",
-			"Key":  "thekey",
+			"Ip":  "thehost",
+			"Key": "thekey",
 		},
 		"Name": "anything",
 	}

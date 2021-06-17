@@ -13,7 +13,7 @@ const (
 	defaultPort = 8888
 	etcDir      = "etc"
 	etcTemplate = `Name: {{.serviceName}}
-Host: {{.host}}
+Ip: {{.host}}
 Port: {{.port}}
 `
 )

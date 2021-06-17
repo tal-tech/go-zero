@@ -3,6 +3,7 @@ package zrpc
 import (
 	"context"
 	"fmt"
+	"github.com/tal-tech/go-zero/zrpc/internal"
 	"log"
 	"net"
 	"testing"
@@ -110,4 +111,16 @@ func TestDepositServer_Deposit(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestNewClientWithTarget(t *testing.T) {
+	//client, err := NewClientWithTarget("kubernetes://nginx-service.default:80")
+	//client, err := NewClientWithTarget("discov://nginx-service.default:80")
+
+	client, err := internal.NewClient(internal.BuildDiscovK8sTarget("k8s:///transform-svc.default:8081"))
+	fmt.Println(client, err)
+	select {}
+	//assert.Nil(t, err)
+
+	//assert.Equal(t, client.Conn().GetState(), connectivity.Ready)
 }
