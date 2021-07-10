@@ -266,6 +266,46 @@ func TestRedis_HyperLogLog(t *testing.T) {
 	})
 }
 
+func TestRedis_PublishSubscribe(t *testing.T) {
+	runOnRedis(t, func(client *Redis) {
+		pubsub, err := client.Subscribe("channelSubscribe")
+		assert.Nil(t, err)
+		defer pubsub.Close()
+
+		_, err = client.Publish("channelSubscribe", "hello world Subscribe")
+		assert.Nil(t, err)
+		_, err = client.Publish("channelSubscribe", "hello world Subscribe")
+		assert.Nil(t, err)
+		msg, err := pubsub.ReceiveMessage()
+		assert.Nil(t, err)
+
+		assert.Equal(t, msg, &red.Message{
+			Channel: "channelSubscribe",
+			Pattern: "",
+			Payload: "hello world Subscribe",
+		})
+	})
+}
+
+func TestRedis_PublishPSubscribe(t *testing.T) {
+	runOnRedis(t, func(client *Redis) {
+		pubsub, err := client.PSubscribe("channel*")
+		assert.Nil(t, err)
+		defer pubsub.Close()
+		_, err = client.Publish("channelPSubscribe", "hello world PSubscribe")
+		assert.Nil(t, err)
+		_, err = client.Publish("channelPSubscribe", "hello world PSubscribe")
+		assert.Nil(t, err)
+		msg, err := pubsub.ReceiveMessage()
+		assert.Nil(t, err)
+		assert.Equal(t, msg, &red.Message{
+			Channel: "channelPSubscribe",
+			Pattern: "channel*",
+			Payload: "hello world PSubscribe",
+		})
+	})
+}
+
 func TestRedis_List(t *testing.T) {
 	runOnRedis(t, func(client *Redis) {
 		_, err := New(client.Addr, badType()).Lpush("key", "value1", "value2")

@@ -50,6 +50,8 @@ type (
 	// RedisNode interface represents a redis node.
 	RedisNode interface {
 		red.Cmdable
+		Subscribe(channels ...string) *red.PubSub
+		PSubscribe(channels ...string) *red.PubSub
 	}
 
 	// GeoLocation is used with GeoAdd to add geospatial location.
@@ -945,6 +947,46 @@ func (s *Redis) Pipelined(fn func(Pipeliner) error) (err error) {
 
 		_, err = conn.Pipelined(fn)
 		return err
+	}, acceptable)
+
+	return
+}
+
+func (s *Redis) Publish(channel string, message interface{}) (val int64, err error) {
+	err = s.brk.DoWithAcceptable(func() error {
+		conn, err := getRedis(s)
+		if err != nil {
+			return err
+		}
+
+		val, err = conn.Publish(channel, message).Result()
+		return err
+	}, acceptable)
+
+	return
+}
+
+func (s *Redis) PSubscribe(channels ...string) (pubSub *red.PubSub, err error) {
+	err = s.brk.DoWithAcceptable(func() error {
+		conn, err := getRedis(s)
+		if err != nil {
+			return err
+		}
+		pubSub = conn.PSubscribe(channels...)
+		return nil
+	}, acceptable)
+
+	return
+}
+
+func (s *Redis) Subscribe(channels ...string) (pubSub *red.PubSub, err error) {
+	err = s.brk.DoWithAcceptable(func() error {
+		conn, err := getRedis(s)
+		if err != nil {
+			return err
+		}
+		pubSub = conn.Subscribe(channels...)
+		return nil
 	}, acceptable)
 
 	return
