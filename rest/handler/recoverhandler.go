@@ -2,10 +2,10 @@ package handler
 
 import (
 	"fmt"
+	"github.com/tal-tech/go-zero/rest/httpx"
+	"github.com/tal-tech/go-zero/rest/internal"
 	"net/http"
 	"runtime/debug"
-
-	"github.com/tal-tech/go-zero/rest/internal"
 )
 
 // RecoverHandler returns a middleware that recovers if panic happens.
@@ -15,6 +15,7 @@ func RecoverHandler(next http.Handler) http.Handler {
 			if result := recover(); result != nil {
 				internal.Error(r, fmt.Sprintf("%v\n%s", result, debug.Stack()))
 				w.WriteHeader(http.StatusInternalServerError)
+				httpx.Error(w, nil)
 			}
 		}()
 
