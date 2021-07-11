@@ -67,13 +67,13 @@ func TestDepositServer_Deposit(t *testing.T) {
 			Token:     "bar",
 			Timeout:   1000,
 		},
-		WithDialOption(grpc.WithInsecure()),
 		WithDialOption(grpc.WithContextDialer(dialer())),
 		WithUnaryClientInterceptor(func(ctx context.Context, method string, req, reply interface{},
 			cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 			return invoker(ctx, method, req, reply, cc, opts...)
 		}),
 	)
+
 	targetClient, err := NewClientWithTarget("foo", WithDialOption(grpc.WithInsecure()),
 		WithDialOption(grpc.WithContextDialer(dialer())), WithUnaryClientInterceptor(
 			func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn,

@@ -14,6 +14,11 @@ func TestRpcClientConf(t *testing.T) {
 	assert.True(t, conf.HasCredential())
 	conf = NewEtcdClientConf([]string{"localhost:1234", "localhost:5678"}, "key", "foo", "bar")
 	assert.True(t, conf.HasCredential())
+	// ssl on
+	conf = NewDirectClientConf([]string{"localhost:1234", "localhost:5678"}, "foo", "bar")
+	assert.False(t, conf.HasSslVerify())
+	conf.InsecureVerify = true
+	assert.True(t, conf.HasSslVerify())
 }
 
 func TestRpcServerConf(t *testing.T) {

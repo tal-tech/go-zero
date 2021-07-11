@@ -2,8 +2,12 @@ package internal
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"strings"
 	"time"
 
@@ -11,6 +15,7 @@ import (
 	"github.com/tal-tech/go-zero/zrpc/internal/clientinterceptors"
 	"github.com/tal-tech/go-zero/zrpc/internal/resolver"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 const (
@@ -64,7 +69,6 @@ func (c *client) buildDialOptions(opts ...ClientOption) []grpc.DialOption {
 	}
 
 	options := []grpc.DialOption{
-		grpc.WithInsecure(),
 		grpc.WithBlock(),
 		WithUnaryClientInterceptors(
 			clientinterceptors.TracingInterceptor,
@@ -107,6 +111,13 @@ func WithDialOption(opt grpc.DialOption) ClientOption {
 	}
 }
 
+// WithInsecure returns a func to customize a ClientOptions with secure option.
+func WithInsecure() ClientOption {
+	return func(options *ClientOptions) {
+		options.DialOptions = append(options.DialOptions, grpc.WithInsecure())
+	}
+}
+
 // WithTimeout returns a func to customize a ClientOptions with given timeout.
 func WithTimeout(timeout time.Duration) ClientOption {
 	return func(options *ClientOptions) {
@@ -118,5 +129,42 @@ func WithTimeout(timeout time.Duration) ClientOption {
 func WithUnaryClientInterceptor(interceptor grpc.UnaryClientInterceptor) ClientOption {
 	return func(options *ClientOptions) {
 		options.DialOptions = append(options.DialOptions, WithUnaryClientInterceptors(interceptor))
+	}
+}
+
+// WithTlsClientFromUnilateralism return a func to customize a ClientOptions Verify with Unilateralism authentication.
+func WithTlsClientFromUnilateralism(crt, domainName string) ClientOption {
+	return func(options *ClientOptions) {
+		c, err := credentials.NewClientTLSFromFile(crt, domainName)
+		if err != nil {
+			log.Fatalf("credentials.NewClientTLSFromFile err: %v", err)
+		}
+		options.DialOptions = append(options.DialOptions, grpc.WithTransportCredentials(c))
+	}
+}
+
+// WithTlsClientFromMutual return a func to customize a ClientOptions Verify with mutual authentication.
+func WithTlsClientFromMutual(crtFile, keyFile, caFile string) ClientOption {
+	return func(options *ClientOptions) {
+		cert, err := tls.LoadX509KeyPair(crtFile, keyFile)
+		if err != nil {
+			log.Fatalf("tls.LoadX509KeyPair err: %v", err)
+		}
+		certPool := x509.NewCertPool()
+		ca, err := ioutil.ReadFile(caFile)
+		if err != nil {
+			log.Fatalf("credentials: failed to ReadFile CA certificates err: %v", err)
+		}
+
+		if !certPool.AppendCertsFromPEM(ca) {
+			log.Fatalf("credentials: failed to append certificates err: %v", err)
+		}
+
+		config := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			RootCAs:      certPool,
+		}
+
+		options.DialOptions = append(options.DialOptions, grpc.WithTransportCredentials(credentials.NewTLS(config)))
 	}
 }

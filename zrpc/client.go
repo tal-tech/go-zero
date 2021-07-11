@@ -17,6 +17,12 @@ var (
 	WithTimeout = internal.WithTimeout
 	// WithUnaryClientInterceptor is an alias of internal.WithUnaryClientInterceptor.
 	WithUnaryClientInterceptor = internal.WithUnaryClientInterceptor
+	// WithInsecure is an alias of internal.WithInsecure.
+	WithInsecure = internal.WithInsecure
+	// WithTlsClientFromUnilateralism is an alias of internal.WithTlsClientFromUnilateralism
+	WithTlsClientFromUnilateralism = internal.WithTlsClientFromUnilateralism
+	// WithTlsClientFromMutual is an alias of internal.WithTlsClientFromMutual
+	WithTlsClientFromMutual = internal.WithTlsClientFromMutual
 )
 
 type (
@@ -54,6 +60,9 @@ func NewClient(c RpcClientConf, options ...ClientOption) (Client, error) {
 		opts = append(opts, WithTimeout(time.Duration(c.Timeout)*time.Millisecond))
 	}
 	opts = append(opts, options...)
+	if !c.HasSslVerify() {
+		opts = append(opts, WithInsecure())
+	}
 
 	var client Client
 	var err error
