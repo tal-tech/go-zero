@@ -90,8 +90,8 @@ func newDefaultOption() Option {
 	}
 }
 
-func (g *defaultGenerator) StartFromDDL(source string, withCache bool) error {
-	modelList, err := g.genFromDDL(source, withCache)
+func (g *defaultGenerator) StartFromDDL(filename string, withCache bool) error {
+	modelList, err := g.genFromDDL(filename, withCache)
 	if err != nil {
 		return err
 	}
@@ -174,21 +174,20 @@ func (g *defaultGenerator) createFile(modelList map[string]string) error {
 }
 
 // ret1: key-table name,value-code
-func (g *defaultGenerator) genFromDDL(source string, withCache bool) (map[string]string, error) {
-	ddlList := g.split(source)
+func (g *defaultGenerator) genFromDDL(filename string, withCache bool) (map[string]string, error) {
 	m := make(map[string]string)
-	for _, ddl := range ddlList {
-		table, err := parser.Parse(ddl)
+	tables, err := parser.Parse(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, e := range tables {
+		code, err := g.genModel(*e, withCache)
 		if err != nil {
 			return nil, err
 		}
 
-		code, err := g.genModel(*table, withCache)
-		if err != nil {
-			return nil, err
-		}
-
-		m[table.Name.Source()] = code
+		m[e.Name.Source()] = code
 	}
 
 	return m, nil

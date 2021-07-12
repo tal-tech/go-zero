@@ -2,6 +2,7 @@ package gen
 
 import (
 	"database/sql"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,6 +21,11 @@ var source = "CREATE TABLE `test_user` (\n  `id` bigint NOT NULL AUTO_INCREMENT,
 func TestCacheModel(t *testing.T) {
 	logx.Disable()
 	_ = Clean()
+
+	sqlFile := filepath.Join(t.TempDir(), "tmp.sql")
+	err := ioutil.WriteFile(sqlFile, []byte(source), 0777)
+	assert.Nil(t, err)
+
 	dir := filepath.Join(t.TempDir(), "./testmodel")
 	cacheDir := filepath.Join(dir, "cache")
 	noCacheDir := filepath.Join(dir, "nocache")
@@ -28,7 +34,7 @@ func TestCacheModel(t *testing.T) {
 	})
 	assert.Nil(t, err)
 
-	err = g.StartFromDDL(source, true)
+	err = g.StartFromDDL(sqlFile, true)
 	assert.Nil(t, err)
 	assert.True(t, func() bool {
 		_, err := os.Stat(filepath.Join(cacheDir, "TestUserModel.go"))
@@ -39,7 +45,7 @@ func TestCacheModel(t *testing.T) {
 	})
 	assert.Nil(t, err)
 
-	err = g.StartFromDDL(source, false)
+	err = g.StartFromDDL(sqlFile, false)
 	assert.Nil(t, err)
 	assert.True(t, func() bool {
 		_, err := os.Stat(filepath.Join(noCacheDir, "testusermodel.go"))
@@ -50,6 +56,11 @@ func TestCacheModel(t *testing.T) {
 func TestNamingModel(t *testing.T) {
 	logx.Disable()
 	_ = Clean()
+
+	sqlFile := filepath.Join(t.TempDir(), "tmp.sql")
+	err := ioutil.WriteFile(sqlFile, []byte(source), 0777)
+	assert.Nil(t, err)
+
 	dir, _ := filepath.Abs("./testmodel")
 	camelDir := filepath.Join(dir, "camel")
 	snakeDir := filepath.Join(dir, "snake")
@@ -61,7 +72,7 @@ func TestNamingModel(t *testing.T) {
 	})
 	assert.Nil(t, err)
 
-	err = g.StartFromDDL(source, true)
+	err = g.StartFromDDL(sqlFile, true)
 	assert.Nil(t, err)
 	assert.True(t, func() bool {
 		_, err := os.Stat(filepath.Join(camelDir, "TestUserModel.go"))
@@ -72,7 +83,7 @@ func TestNamingModel(t *testing.T) {
 	})
 	assert.Nil(t, err)
 
-	err = g.StartFromDDL(source, true)
+	err = g.StartFromDDL(sqlFile, true)
 	assert.Nil(t, err)
 	assert.True(t, func() bool {
 		_, err := os.Stat(filepath.Join(snakeDir, "test_user_model.go"))

@@ -1,88 +1,47 @@
 package parser
 
 import (
-	"sort"
+	"io/ioutil"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/tal-tech/go-zero/tools/goctl/model/sql/model"
 	"github.com/tal-tech/go-zero/tools/goctl/model/sql/util"
-	"github.com/tal-tech/go-zero/tools/goctl/util/stringx"
 )
 
 func TestParsePlainText(t *testing.T) {
-	_, err := Parse("plain text")
+	sqlFile := filepath.Join(t.TempDir(), "tmp.sql")
+	err := ioutil.WriteFile(sqlFile, []byte("plain text"), 0777)
+	assert.Nil(t, err)
+
+	_, err = Parse(sqlFile)
 	assert.NotNil(t, err)
 }
 
 func TestParseSelect(t *testing.T) {
-	_, err := Parse("select * from user")
-	assert.Equal(t, errUnsupportDDL, err)
+	sqlFile := filepath.Join(t.TempDir(), "tmp.sql")
+	err := ioutil.WriteFile(sqlFile, []byte("select * from user"), 0777)
+	assert.Nil(t, err)
+
+	tables, err := Parse(sqlFile)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(tables))
 }
 
 func TestParseCreateTable(t *testing.T) {
-	table, err := Parse("CREATE TABLE `test_user` (\n  `id` bigint NOT NULL AUTO_INCREMENT,\n  `mobile` varchar(255) COLLATE utf8mb4_bin NOT NULL comment '手\\t机  号',\n  `class` bigint NOT NULL comment '班级',\n  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL comment '姓\n  名',\n  `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP comment '创建\\r时间',\n  `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `mobile_unique` (`mobile`),\n  UNIQUE KEY `class_name_unique` (`class`,`name`),\n  KEY `create_index` (`create_time`),\n  KEY `name_index` (`name`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;")
+	sqlFile := filepath.Join(t.TempDir(), "tmp.sql")
+	err := ioutil.WriteFile(sqlFile, []byte("CREATE TABLE `test_user` (\n  `id` bigint NOT NULL AUTO_INCREMENT,\n  `mobile` varchar(255) COLLATE utf8mb4_bin NOT NULL comment '手\\t机  号',\n  `class` bigint NOT NULL comment '班级',\n  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL comment '姓\n  名',\n  `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP comment '创建\\r时间',\n  `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `mobile_unique` (`mobile`),\n  UNIQUE KEY `class_name_unique` (`class`,`name`),\n  KEY `create_index` (`create_time`),\n  KEY `name_index` (`name`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;"), 0777)
+	assert.Nil(t, err)
+
+	tables, err := Parse(sqlFile)
+	assert.Equal(t, 1, len(tables))
+	table := tables[0]
 	assert.Nil(t, err)
 	assert.Equal(t, "test_user", table.Name.Source())
 	assert.Equal(t, "id", table.PrimaryKey.Name.Source())
 	assert.Equal(t, true, table.ContainsTime())
-	assert.Equal(t, true, func() bool {
-		mobileUniqueIndex, ok := table.UniqueIndex["mobile_unique"]
-		if !ok {
-			return false
-		}
-
-		classNameUniqueIndex, ok := table.UniqueIndex["class_name_unique"]
-		if !ok {
-			return false
-		}
-
-		equal := func(f1, f2 []*Field) bool {
-			sort.Slice(f1, func(i, j int) bool {
-				return f1[i].Name.Source() < f1[j].Name.Source()
-			})
-			sort.Slice(f2, func(i, j int) bool {
-				return f2[i].Name.Source() < f2[j].Name.Source()
-			})
-
-			if len(f2) != len(f2) {
-				return false
-			}
-
-			for index, f := range f1 {
-				if f1[index].Name.Source() != f.Name.Source() {
-					return false
-				}
-			}
-			return true
-		}
-
-		if !equal(mobileUniqueIndex, []*Field{
-			{
-				Name:         stringx.From("mobile"),
-				DataBaseType: "varchar",
-				DataType:     "string",
-				SeqInIndex:   1,
-			},
-		}) {
-			return false
-		}
-
-		return equal(classNameUniqueIndex, []*Field{
-			{
-				Name:         stringx.From("class"),
-				DataBaseType: "bigint",
-				DataType:     "int64",
-				SeqInIndex:   1,
-			},
-			{
-				Name:         stringx.From("name"),
-				DataBaseType: "varchar",
-				DataType:     "string",
-				SeqInIndex:   2,
-			},
-		})
-	}())
+	assert.Equal(t, 2, len(table.UniqueIndex))
 	assert.True(t, func() bool {
 		for _, e := range table.Fields {
 			if e.Comment != util.TrimNewLine(e.Comment) {

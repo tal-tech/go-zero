@@ -4,25 +4,23 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/zeromicro/ddl-parser/parser"
 )
 
 func TestConvertDataType(t *testing.T) {
-	v, err := ConvertDataType("tinyint", false)
+	v, err := ConvertDataType(parser.TinyInt, false)
 	assert.Nil(t, err)
 	assert.Equal(t, "int64", v)
 
-	v, err = ConvertDataType("tinyint", true)
+	v, err = ConvertDataType(parser.TinyInt, true)
 	assert.Nil(t, err)
 	assert.Equal(t, "sql.NullInt64", v)
 
-	v, err = ConvertDataType("timestamp", false)
+	v, err = ConvertDataType(parser.Timestamp, false)
 	assert.Nil(t, err)
 	assert.Equal(t, "time.Time", v)
 
-	v, err = ConvertDataType("timestamp", true)
+	v, err = ConvertDataType(parser.Timestamp, true)
 	assert.Nil(t, err)
 	assert.Equal(t, "sql.NullTime", v)
-
-	_, err = ConvertDataType("float32", false)
-	assert.NotNil(t, err)
 }

@@ -2,7 +2,6 @@ package command
 
 import (
 	"errors"
-	"io/ioutil"
 	"path/filepath"
 	"strings"
 
@@ -76,22 +75,19 @@ func fromDDl(src, dir string, cfg *config.Config, cache, idea bool) error {
 		return errNotMatched
 	}
 
-	var source []string
-	for _, file := range files {
-		data, err := ioutil.ReadFile(file)
-		if err != nil {
-			return err
-		}
-
-		source = append(source, string(data))
-	}
-
 	generator, err := gen.NewDefaultGenerator(dir, cfg, gen.WithConsoleOption(log))
 	if err != nil {
 		return err
 	}
 
-	return generator.StartFromDDL(strings.Join(source, "\n"), cache)
+	for _, file := range files {
+		err = generator.StartFromDDL(file, cache)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func fromDataSource(url, pattern, dir string, cfg *config.Config, cache, idea bool) error {
