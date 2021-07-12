@@ -148,14 +148,14 @@ func WithMiddleware(middleware Middleware, rs ...Route) []Route {
 
 // WithNotFoundHandler returns a RunOption with not found handler set to given handler.
 func WithNotFoundHandler(handler http.Handler) RunOption {
-	rt := router.NewRouter()
+	rt := router.GetDefaultRouter()
 	rt.SetNotFoundHandler(handler)
 	return WithRouter(rt)
 }
 
 // WithNotAllowedHandler returns a RunOption with not allowed handler set to given handler.
 func WithNotAllowedHandler(handler http.Handler) RunOption {
-	rt := router.NewRouter()
+	rt := router.GetDefaultRouter()
 	rt.SetNotAllowedHandler(handler)
 	return WithRouter(rt)
 }

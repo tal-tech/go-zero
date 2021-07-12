@@ -84,6 +84,32 @@ func TestPatRouterNotAllowed(t *testing.T) {
 	assert.True(t, notAllowed)
 }
 
+func TestPatRouterNotFoundAndNotAllowed(t *testing.T) {
+	var notFound, notAllowed bool
+	router := GetDefaultRouter()
+	router.SetNotFoundHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		notFound = true
+	}))
+	router.SetNotAllowedHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		notAllowed = true
+	}))
+	err := router.Handle(http.MethodGet, "/a/b",
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	assert.Nil(t, err)
+
+	// not found
+	r, _ := http.NewRequest(http.MethodGet, "/a/c", nil)
+	w := new(mockedResponseWriter)
+	router.ServeHTTP(w, r)
+	assert.True(t, notFound)
+
+	// not allowed
+	r, _ = http.NewRequest(http.MethodPost, "/a/b", nil)
+	w = new(mockedResponseWriter)
+	router.ServeHTTP(w, r)
+	assert.True(t, notAllowed)
+}
+
 func TestPatRouter(t *testing.T) {
 	tests := []struct {
 		method string
