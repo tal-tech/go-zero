@@ -59,4 +59,10 @@ service Test_Service {
   rpc MapService (MapReq) returns (CommonReply);
   // case repeated
   rpc RepeatedService (RepeatedReq) returns (CommonReply);
+  // server stream
+  rpc ServerStream (Req) returns (stream Reply);
+  // client stream
+  rpc ClientStream (stream Req) returns (Reply);
+  // stream
+  rpc Stream(stream Req) returns (stream Reply);
 }

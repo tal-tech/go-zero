@@ -40,10 +40,10 @@ func New{{.logicName}}(ctx context.Context,svcCtx *svc.ServiceContext) *{{.logic
 {{.functions}}
 `
 	logicFunctionTemplate = `{{if .hasComment}}{{.comment}}{{end}}
-func (l *{{.logicName}}) {{.method}} (in {{.request}}) ({{.response}}, error) {
+func (l *{{.logicName}}) {{.method}} ({{if .hasReq}}in {{.request}}{{if .stream}},stream {{.streamBody}}{{end}}{{else}}stream {{.streamBody}}{{end}}) ({{if .hasReply}}{{.response}},{{end}} error) {
 	// todo: add your logic here and delete this line
 	
-	return &{{.responseType}}{}, nil
+	return {{if .hasReply}}&{{.responseType}}{},{{end}} nil
 }
 `
 )
@@ -51,6 +51,7 @@ func (l *{{.logicName}}) {{.method}} (in {{.request}}) ({{.response}}, error) {
 // GenLogic generates the logic file of the rpc service, which corresponds to the RPC definition items in proto.
 func (g *DefaultGenerator) GenLogic(ctx DirContext, proto parser.Proto, cfg *conf.Config) error {
 	dir := ctx.GetLogic()
+	service := proto.Service.Service.Name
 	for _, rpc := range proto.Service.RPC {
 		logicFilename, err := format.FileNamingFormat(cfg.NamingFormat, rpc.Name+"_logic")
 		if err != nil {
@@ -58,7 +59,7 @@ func (g *DefaultGenerator) GenLogic(ctx DirContext, proto parser.Proto, cfg *con
 		}
 
 		filename := filepath.Join(dir.Filename, logicFilename+".go")
-		functions, err := g.genLogicFunction(proto.PbPackage, rpc)
+		functions, err := g.genLogicFunction(service, proto.PbPackage, rpc)
 		if err != nil {
 			return err
 		}
@@ -82,7 +83,7 @@ func (g *DefaultGenerator) GenLogic(ctx DirContext, proto parser.Proto, cfg *con
 	return nil
 }
 
-func (g *DefaultGenerator) genLogicFunction(goPackage string, rpc *parser.RPC) (string, error) {
+func (g *DefaultGenerator) genLogicFunction(serviceName string, goPackage string, rpc *parser.RPC) (string, error) {
 	functions := make([]string, 0)
 	text, err := util.LoadTemplate(category, logicFuncTemplateFileFile, logicFunctionTemplate)
 	if err != nil {
@@ -91,12 +92,24 @@ func (g *DefaultGenerator) genLogicFunction(goPackage string, rpc *parser.RPC) (
 
 	logicName := stringx.From(rpc.Name + "_logic").ToCamel()
 	comment := parser.GetComment(rpc.Doc())
+	var streamServer string
+	if rpc.StreamsRequest && rpc.StreamsReturns {
+		streamServer = fmt.Sprintf("%s.%s", goPackage, parser.CamelCase(serviceName)+"_StreamServer")
+	} else if rpc.StreamsRequest {
+		streamServer = fmt.Sprintf("%s.%s", goPackage, parser.CamelCase(serviceName)+"_ClientStreamServer")
+	} else {
+		streamServer = fmt.Sprintf("%s.%s", goPackage, parser.CamelCase(serviceName)+"_ServerStreamServer")
+	}
 	buffer, err := util.With("fun").Parse(text).Execute(map[string]interface{}{
 		"logicName":    logicName,
 		"method":       parser.CamelCase(rpc.Name),
+		"hasReq":       !rpc.StreamsRequest,
 		"request":      fmt.Sprintf("*%s.%s", goPackage, parser.CamelCase(rpc.RequestType)),
+		"hasReply":     !rpc.StreamsRequest && !rpc.StreamsReturns,
 		"response":     fmt.Sprintf("*%s.%s", goPackage, parser.CamelCase(rpc.ReturnsType)),
 		"responseType": fmt.Sprintf("%s.%s", goPackage, parser.CamelCase(rpc.ReturnsType)),
+		"stream":       rpc.StreamsRequest || rpc.StreamsReturns,
+		"streamBody":   streamServer,
 		"hasComment":   len(comment) > 0,
 		"comment":      comment,
 	})

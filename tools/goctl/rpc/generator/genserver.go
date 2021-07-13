@@ -38,9 +38,9 @@ func New{{.server}}Server(svcCtx *svc.ServiceContext) *{{.server}}Server {
 `
 	functionTemplate = `
 {{if .hasComment}}{{.comment}}{{end}}
-func (s *{{.server}}Server) {{.method}} (ctx context.Context, in {{.request}}) ({{.response}}, error) {
-	l := logic.New{{.logicName}}(ctx,s.svcCtx)
-	return l.{{.method}}(in)
+func (s *{{.server}}Server) {{.method}} ({{if .notStream}}ctx context.Context,{{if .hasReq}} in {{.request}}{{end}}{{else}}{{if .hasReq}} in {{.request}},{{end}}stream {{.streamBody}}{{end}}) ({{if .notStream}}{{.response}},{{end}}error) {
+	l := logic.New{{.logicName}}({{if .notStream}}ctx,{{else}}stream.Context(),{{end}}s.svcCtx)
+	return l.{{.method}}({{if .hasReq}}in{{if .stream}} ,stream{{end}}{{else}}{{if .stream}}stream{{end}}{{end}})
 }
 `
 )
@@ -91,6 +91,15 @@ func (g *DefaultGenerator) genFunctions(goPackage string, service parser.Service
 		}
 
 		comment := parser.GetComment(rpc.Doc())
+		var streamServer string
+		if rpc.StreamsRequest && rpc.StreamsReturns {
+			streamServer = fmt.Sprintf("%s.%s", goPackage, parser.CamelCase(service.Name)+"_StreamServer")
+		} else if rpc.StreamsRequest {
+			streamServer = fmt.Sprintf("%s.%s", goPackage, parser.CamelCase(service.Name)+"_ClientStreamServer")
+		} else {
+			streamServer = fmt.Sprintf("%s.%s", goPackage, parser.CamelCase(service.Name)+"_ServerStreamServer")
+		}
+
 		buffer, err := util.With("func").Parse(text).Execute(map[string]interface{}{
 			"server":     stringx.From(service.Name).ToCamel(),
 			"logicName":  fmt.Sprintf("%sLogic", stringx.From(rpc.Name).ToCamel()),
@@ -99,6 +108,10 @@ func (g *DefaultGenerator) genFunctions(goPackage string, service parser.Service
 			"response":   fmt.Sprintf("*%s.%s", goPackage, parser.CamelCase(rpc.ReturnsType)),
 			"hasComment": len(comment) > 0,
 			"comment":    comment,
+			"hasReq":     !rpc.StreamsRequest,
+			"stream":     rpc.StreamsRequest || rpc.StreamsReturns,
+			"notStream":  !rpc.StreamsRequest && !rpc.StreamsReturns,
+			"streamBody": streamServer,
 		})
 		if err != nil {
 			return nil, err

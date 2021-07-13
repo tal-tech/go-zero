@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package test;
+
+message Req{
+  string input = 1;
+}
+
+message Reply{
+  string output = 1;
+}
+service TestService{
+  rpc ServerStream (Req) returns (stream Reply);
+  rpc ClientStream (stream Req) returns (Reply);
+  rpc Stream (stream Req) returns (stream Reply);
+}
